@@ -12,7 +12,18 @@ from datetime import datetime
 import scrapy
 from scrapy.loader.processors import MapCompose, Compose, TakeFirst, Identity
 
-from steamscraping.settings import REVIEWS_TO_PASS, DAYS_EARLIER
+from steamscraping.settings import REVIEWS_TO_PASS, DAYS_EARLIER, LANGUAGE
+
+
+# TODO: change message when language selection will be moved to setup.py
+class LanguageSelectError(ValueError):
+    """
+    Language in settings.py is not supported
+    """
+    def __init__(self):
+        message = ("Please select correct language in settings.py: "
+                   "russian or english")
+        super().__init__(message)
 
 
 class StrToInt:
@@ -33,6 +44,15 @@ class StrToInt:
 
 class StrToDate:
     def __init__(self):
+        if LANGUAGE == 'english':
+            self.datetime_formats = (
+                '%d %b, %Y', '%b %Y', '%B %Y', '%B, %Y', '%Y'
+            )
+        elif LANGUAGE == 'russian':
+            # TODO: to implement
+            pass
+        else:
+            raise LanguageSelectError()
         pass
 
     def __call__(self, date_str):
@@ -41,8 +61,7 @@ class StrToDate:
         :param date_str: string with date
         :return: datetime instance if it is possible (otherwise given string)
         """
-        datetime_formats = ('%d %b, %Y', '%b %Y', '%B %Y', '%B, %Y', '%Y')
-        for datetime_format in datetime_formats:
+        for datetime_format in self.datetime_formats:
             try:
                 return datetime.strptime(date_str, datetime_format)
             except ValueError:
@@ -125,20 +144,19 @@ class GameRequirementsBuilder:
     Class for building object for storing system requirements
     We can pass additional parameters for building
     """
-    def __init__(self, lang='english'):
-        if lang == 'english':
+    def __init__(self):
+        if LANGUAGE == 'english':
             self.MIN_LABEL = 'Minimum:'
             self.REC_LABEL = 'Recommended:'
             self.OS_LABEL = 'OS:'
             self.CPU_LABEL = 'Processor:'
             self.GPU_LABEL = 'Graphics:'
             self.RAM_LABEL = 'Memory:'
-        elif lang == 'russian':
+        elif LANGUAGE == 'russian':
             # TODO: to implement
             pass
         else:
-            raise ValueError(
-                "Please select correct language: russian or english")
+            raise LanguageSelectError()
 
     def __call__(self, data_from_scraper: List[str]) -> GameRequirements:
         """

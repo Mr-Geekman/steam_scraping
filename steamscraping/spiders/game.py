@@ -19,7 +19,11 @@ class GameItemLoader(ItemLoader):
 
 # TODO: see below
 # 1) make pipelines
-# 2) think about logging
+# 2) write tests
+# 3) think carefully about switching language
+# 4) think about logging
+# 5) add language selection to setup.py and generate more general config file
+#       with database section and other sections (with language)
 class GameParser(CrawlSpider):
     """
     Spider class for parsing new games
