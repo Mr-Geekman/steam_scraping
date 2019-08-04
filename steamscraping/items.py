@@ -15,7 +15,6 @@ from scrapy.loader.processors import MapCompose, Compose, TakeFirst, Identity
 from steamscraping.settings import REVIEWS_TO_PASS, DAYS_EARLIER, LANGUAGE
 
 
-# TODO: change message when language selection will be moved to setup.py
 class LanguageSelectError(ValueError):
     """
     Language in settings.py is not supported

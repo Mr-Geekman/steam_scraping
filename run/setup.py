@@ -17,7 +17,7 @@ def main():
     args = parser.parse_args()
 
     # load settings of database to file
-    db_config_filename = os.path.join(APP_DIR, 'db_config.yaml')
+    db_config_filename = os.path.join(APP_DIR, 'app_config.yaml')
     with open(db_config_filename, 'w') as file:
         yaml.dump(vars(args), file)
 

@@ -3,6 +3,10 @@ import os
 
 import yaml
 
+from app_config import AppConfig, APP_DIR
+
+app_config = AppConfig()
+
 # Scrapy settings for steamscraping project
 #
 # For simplicity, this file contains only settings considered important or
@@ -92,55 +96,23 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 4.0
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
-# ------------ My Parameters ------------ #
+# ------------ App Parameters ------------ #
 
 # For filtering snr get-parameter
 
 DUPEFILTER_CLASS = 'steamscraping.middlewares.SteamDupeFilter'
 
+
 # Crawl settings
 
+# supported languages: english, russian (otherwise, you will get an error)
 LANGUAGE = 'english'
 DAYS_EARLIER = 2
 REVIEWS_TO_PASS = 500
 
 # DB settings
 
-# TODO: to test it
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-class DBConfigParser:
-    """
-    Class for parsing database settings from config file
-    """
-    def __init__(self):
-        db_config_filename = os.path.join(APP_DIR, 'db_config.yaml')
-        if os.path.isfile(db_config_filename):
-            try:
-                with open(db_config_filename, 'r') as file:
-                    self.data = yaml.safe_load(file)
-            except Exception as e:
-                raise Exception("There is some problem with "
-                                "your database config file. "
-                                "Run setup.py again. "
-                                "Error: {}".format(e))
-        else:
-            raise Exception("You haven't setup this app."
-                            "Please, run setup.py")
-
-    @property
-    def host(self) -> str:
-        return self.data['host']
-
-    @property
-    def port(self) -> int:
-        return self.data['port']
-
-    @property
-    def user(self) -> str:
-        return self.data['user']
-
-    @property
-    def password(self) -> str:
-        return self.data['password']
+DB_HOST = app_config.db_host
+DB_PORT = app_config.db_port
+DB_USER = app_config.db_user
+DB_PASSWORD = app_config.db_password

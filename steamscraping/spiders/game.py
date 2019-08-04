@@ -7,7 +7,7 @@ from scrapy.loader import ItemLoader
 from scrapy.loader.processors import TakeFirst
 
 from steamscraping.items import Game, StrToDate
-from steamscraping.settings import DAYS_EARLIER
+from steamscraping.settings import DAYS_EARLIER, LANGUAGE
 
 
 class GameItemLoader(ItemLoader):
@@ -22,8 +22,7 @@ class GameItemLoader(ItemLoader):
 # 2) write tests
 # 3) think carefully about switching language
 # 4) think about logging
-# 5) add language selection to setup.py and generate more general config file
-#       with database section and other sections (with language)
+# 5) add sections to config files
 class GameParser(CrawlSpider):
     """
     Spider class for parsing new games
@@ -55,9 +54,11 @@ class GameParser(CrawlSpider):
     @staticmethod
     def add_cookies(request):
         """
-        Add cookie for avoiding age checking, mature content checking
+        Add cookie for correct language, avoiding age checking,
+            mature content checking
         """
-        request.cookies.update({'mature_content': '1',
+        request.cookies.update({'Steam_language': LANGUAGE,
+                                'mature_content': '1',
                                 'lastagecheckage': '1-0-2000',
                                 'birthtime': 943999201})
 
