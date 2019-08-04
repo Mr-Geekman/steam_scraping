@@ -6,26 +6,23 @@ from scrapy.linkextractors import LinkExtractor
 from scrapy.loader import ItemLoader
 from scrapy.loader.processors import TakeFirst
 
-from steamscraping.items import Game, str_to_date
+from steamscraping.items import Game, StrToDate
 from steamscraping.settings import DAYS_EARLIER
 
 
 class GameItemLoader(ItemLoader):
     """
-    Кастомный загрузчик с переопределенным output_processor по-умолчанию
+    Custom item loader with overrided default output_processor
     """
     default_input_processor = TakeFirst()
 
 
 # TODO: see below
-# 1) Доставать теги, specs
-# 2) Подрубить русский язык при парсинге, если возможно
-# 3) Доставать системки и ощищать их
-# 4) Реализовать пайплайны для заполнения БД
-# 5) Подумать над логгированием
+# 1) make pipelines
+# 2) think about logging
 class GameParser(CrawlSpider):
     """
-    Класс паука для парсинга новых игр со steam
+    Spider class for parsing new games
     """
     name = 'games'
     start_urls = ["https://store.steampowered.com/search/"
@@ -54,7 +51,7 @@ class GameParser(CrawlSpider):
     @staticmethod
     def add_cookies(request):
         """
-        Добавим cookie для обхода ограничений на жестокость и на возраст
+        Add cookie for avoiding age checking, mature content checking
         """
         request.cookies.update({'mature_content': '1',
                                 'lastagecheckage': '1-0-2000',
@@ -64,16 +61,15 @@ class GameParser(CrawlSpider):
 
     def parse_page(self, response):
         """
-        Метод для парсинга страницы с играми, нужен для прекращения парсинга
-        в случае прихода ко слишком ранней дате
-        :param response: запрос
+        Method for parsing page with games
+        We should stop parsing if we face too old game (depends on settings)
         """
-        # посмотрим на даты релиза игр, которые мы нашли на странице
-        # если среди игр на странице есть хоть одна, вышедшая вовремя, то
-        # обрабатываем страницу
+        # look at games release dates on the page
+        # if there is at least one game, that released in relevant time
+        # process the page
         release_dates_str = response.css('div.search_released::text').extract()
         for release_date_str in release_dates_str:
-            release_date = str_to_date(release_date_str)
+            release_date = StrToDate()(release_date_str)
 
             if (isinstance(release_date, datetime) and
                     (datetime.now() - release_date).days <= DAYS_EARLIER):
@@ -84,14 +80,14 @@ class GameParser(CrawlSpider):
     @staticmethod
     def parse_game(response):
         """
-        Метод для парсинга самой игры
+        Method for parsing game
         """
-        # если появляется форма выбора возраста, значит сломались куки
+        # if there is age checking form, than our cookies broke
         if '/agecheck/app' in response.url:
-            # TODO: добавить логгирование
+            # TODO: add logging
             print("--------COOKIES BROKEN--------")
 
-        # если формы ввода возраста нет, то все делаем,как обычно
+        # if other case, process the page
         else:
             loader = GameItemLoader(item=Game(), response=response)
 
@@ -112,5 +108,8 @@ class GameParser(CrawlSpider):
             loader.add_css('tags', 'a.app_tag ::text')
 
             loader.add_css('price', 'div.price::attr(data-price-final)')
+
+            loader.add_css('system_requirements',
+                           '.game_area_sys_req[data-os="win"] ::text')
 
             yield loader.load_item()

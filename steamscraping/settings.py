@@ -100,6 +100,7 @@ DUPEFILTER_CLASS = 'steamscraping.middlewares.SteamDupeFilter'
 
 # Crawl settings
 
+LANGUAGE = 'english'
 DAYS_EARLIER = 2
 REVIEWS_TO_PASS = 500
 
@@ -107,6 +108,7 @@ REVIEWS_TO_PASS = 500
 
 # TODO: to test it
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 class DBConfigParser:
     """

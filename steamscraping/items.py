@@ -6,7 +6,7 @@
 # https://doc.scrapy.org/en/latest/topics/items.html
 
 import re
-from typing import Union
+from typing import Union, List, Tuple
 from datetime import datetime
 
 import scrapy
@@ -17,18 +17,18 @@ from steamscraping.settings import REVIEWS_TO_PASS, DAYS_EARLIER
 
 class StrToInt:
     def __init__(self, default=None):
-        self.defautl = default
+        self.default = default
 
     def __call__(self, int_str: str):
         """
-        Получить из строки число, если возможно, иначе None
-        :param int_str: значение для преобраз
-        :return: int или None
+        Get int from string if it is possible, otherwise default value
+        :param int_str: value to convert
+        :return: result of converting
         """
         try:
             return int(int_str)
         except ValueError:
-            return self.defautl
+            return self.default
 
 
 class StrToDate:
@@ -37,9 +37,9 @@ class StrToDate:
 
     def __call__(self, date_str):
         """
-        Получить представление даты в виде datetime по ее строковому представлению
-        :param date_str: строка с датой
-        :return: datetime, если возможно, иначе исходную строку
+        Get datetime instance from string if it is possible
+        :param date_str: string with date
+        :return: datetime instance if it is possible (otherwise given string)
         """
         datetime_formats = ('%d %b, %Y', '%b %Y', '%B %Y', '%B, %Y', '%Y')
         for datetime_format in datetime_formats:
@@ -47,21 +47,21 @@ class StrToDate:
                 return datetime.strptime(date_str, datetime_format)
             except ValueError:
                 pass
-        # TODO: добавить логгирование, чтобы все подобные случаи фиксить
+        # TODO: add logging for fixing this cases
         print("-------------{}------------".format(date_str))
         return date_str
 
 
 class GameNumReviews:
     """
-    Вспомогательные методы для процессинга количества рецензий
+    Service methods for processing num of reviews
     """
     @staticmethod
     def filter_by_num_review(num_reviews: int) -> Union[int, None]:
         """
-        Отфильтруем игры, у которых недостаточно рецензий
-        :param num_reviews: число рецензий
-        :return: число рецензий, если их достаточно, иначе None
+        Filter games, that have enough reviews
+        :param num_reviews: num of reviews
+        :return: num of reviews if it is enough, otherwise None
         """
         if num_reviews >= REVIEWS_TO_PASS:
             return num_reviews
@@ -71,36 +71,165 @@ class GameNumReviews:
 
 class GameReleaseDate:
     """
-    Вспомогательные методы для процессинга даты релиза игры
+    Service methods for processing game release date
     """
     @staticmethod
-    def filter_by_date(date):
+    def filter_by_date(release_date):
         """
-        Отфильтруем игры, у которых слишком старый срок выхода
-        :date num_reviews: дата
-        :return: число рецензий, если их достаточно, иначе None
+        Filter games, that have relevant release date (not older than
+            in specified in settings)
+        :param release_date: release date
+        :return: release date if it was filtered, otherwise None
         """
-        if (isinstance(date, datetime) and
-                (datetime.now() - date).days > DAYS_EARLIER):
+        if (isinstance(release_date, datetime) and
+                (datetime.now() - release_date).days > DAYS_EARLIER):
             return None
         else:
-            return date
+            return release_date
 
 
 class GameDescription:
     """
-    Вспомогательные методы для процессинга описаний
+    Service methods for processing game descriptions
     """
     @staticmethod
     def remove_divs(value):
+        """
+        Remove div tags around the description
+        """
         left_border = value.find('>')
         right_border = value.rfind('<')
         return value[left_border + 1, right_border]
 
 
+class GameRequirements:
+    """
+    Class for storing system requirements
+    """
+    def __init__(self, min_os, min_cpu, min_ram, min_gpu, rec_os, rec_cpu,
+                 rec_ram, rec_gpu):
+        self.min_os = min_os
+        self.min_cpu = min_cpu
+        self.min_ram = min_ram
+        self.min_gpu = min_gpu
+        self.rec_os = rec_os
+        self.rec_cpu = rec_cpu
+        self.rec_ram = rec_ram
+        self.rec_gpu = rec_gpu
+        # We can add new useful fields, such as below
+        # self.direct_x = direct_x
+
+
+class GameRequirementsBuilder:
+    """
+    Class for building object for storing system requirements
+    We can pass additional parameters for building
+    """
+    def __init__(self, lang='english'):
+        if lang == 'english':
+            self.MIN_LABEL = 'Minimum:'
+            self.REC_LABEL = 'Recommended:'
+            self.OS_LABEL = 'OS:'
+            self.CPU_LABEL = 'Processor:'
+            self.GPU_LABEL = 'Graphics:'
+            self.RAM_LABEL = 'Memory:'
+        elif lang == 'russian':
+            # TODO: to implement
+            pass
+        else:
+            raise ValueError(
+                "Please select correct language: russian or english")
+
+    def __call__(self, data_from_scraper: List[str]) -> GameRequirements:
+        """
+        Building GameRequirements object
+        :param data_from_scraper: data collected by scraper
+        :return: GameRequirements instance
+        """
+        # remove white spaces from collected data
+        self._remove_white_spaces(data_from_scraper)
+
+        # split requirements into minimum and recommended requirements
+        min_req_list, rec_req_list = self._split_requirements(
+            data_from_scraper
+        )
+
+        # get operating system
+        min_os = self._get_requirement(min_req_list, self.OS_LABEL)
+        rec_os = self._get_requirement(rec_req_list, self.OS_LABEL)
+
+        # get processor
+        min_cpu = self._get_requirement(min_req_list, self.CPU_LABEL)
+        rec_cpu = self._get_requirement(rec_req_list, self.CPU_LABEL)
+
+        # get graphics card
+        min_gpu = self._get_requirement(min_req_list, self.GPU_LABEL)
+        rec_gpu = self._get_requirement(rec_req_list, self.GPU_LABEL)
+
+        # get ram
+        min_ram = self._get_requirement(min_req_list, self.RAM_LABEL)
+        rec_ram = self._get_requirement(rec_req_list, self.RAM_LABEL)
+
+        # create GameRequirements object and return it
+        return GameRequirements(min_os, min_cpu, min_ram, min_gpu,
+                                rec_os, rec_cpu, rec_ram, rec_gpu)
+
+    @staticmethod
+    def _remove_white_spaces(data_from_scraper: List[str]) -> None:
+        """
+        Remove redundant white spaces and elements, that consists only of
+            them (\r, \n, \t)
+        """
+        data_from_scraper = list(map(lambda x: x.strip(), data_from_scraper))
+        data_from_scraper.remove('')
+
+    def _split_requirements(
+            self, data_from_scraper: List[str]
+    ) -> Tuple[List[str], List[str]]:
+        """
+        Find sublists contains minimum and recommended system requirements
+        :param data_from_scraper: scraped data
+        :return: two sublists
+        """
+        min_index_start = 0
+        rec_index_start = len(data_from_scraper)
+        try:
+            min_index_start = data_from_scraper.index(self.MIN_LABEL)
+        except ValueError:
+            # TODO: add logging for storing errors
+            pass
+        try:
+            rec_index_start = data_from_scraper.index(self.REC_LABEL)
+        except ValueError:
+            pass
+        min_req_list = data_from_scraper[min_index_start: rec_index_start]
+        rec_req_list = data_from_scraper[:rec_index_start]
+        return min_req_list, rec_req_list
+
+    @staticmethod
+    def _get_requirement(
+            requirements_list: List[str], label: str
+    ) -> Union[str, None]:
+        """
+        Get from system requirements list the element by label
+        :param requirements_list: list with requirements
+        :param label: обозначение для требования, которое нужно достать
+        :param label: label for requirement to get
+        :return: found string or None
+        """
+        if not requirements_list:
+            return None
+        try:
+            cpu_label_index = requirements_list.index(label)
+            return requirements_list[cpu_label_index + 1]
+        except (ValueError, IndexError):
+            # TODO: to add logging
+            return None
+
+
 class Game(scrapy.Item):
     """
-    Модель игры для парсинга
+    Model for game
     """
     game_id = scrapy.Field()
     title = scrapy.Field()
@@ -144,14 +273,9 @@ class Game(scrapy.Item):
         )
     )
 
-    # developer
-    # 
-    # min_os = scrapy.Field()
-    # min_cpu = scrapy.Field()
-    # min_ram = scrapy.Field()
-    # min_gpu = scrapy.Field()
-    #
-    # rec_os = scrapy.Field()
-    # rec_cpu = scrapy.Field()
-    # rec_ram = scrapy.Field()
-    # rec_gpu = scrapy.Field()
+    system_requirements = scrapy.Field(
+        input_processor=Compose(Identity(), GameRequirementsBuilder())
+    )
+
+    # developer = scrapy.Field()
+    # pictures = scrapy.Filed()
