@@ -13,7 +13,7 @@ class AppConfig:
     Class for parsing app settings from config file (secure settings)
     """
     def __init__(self):
-        db_config_filename = os.path.join(APP_DIR, 'app_config.yaml')
+        db_config_filename = os.path.join(APP_DIR, 'app.yaml')
         if os.path.isfile(db_config_filename):
             try:
                 with open(db_config_filename, 'r') as file:
