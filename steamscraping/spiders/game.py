@@ -7,14 +7,12 @@ from scrapy.loader import ItemLoader
 from scrapy.loader.processors import TakeFirst
 
 from steamscraping.items import Game, StrToDate
-from steamscraping.settings import DAYS_EARLIER, LANGUAGE
+import steamscraping.settings as settings
 
 
 class GameItemLoader(ItemLoader):
-    """
-    Custom item loader with overrided default output_processor
-    """
-    default_input_processor = TakeFirst()
+    """Custom item loader with overrided default output_processor."""
+    default_output_processor = TakeFirst()
 
 
 # TODO: see below
@@ -24,13 +22,21 @@ class GameItemLoader(ItemLoader):
 # 4) think about logging
 # 5) add sections to config files
 class GameParser(CrawlSpider):
-    """
-    Spider class for parsing new games
-    """
+    """Spider class for parsing new games."""
     name = 'games'
     start_urls = ["https://store.steampowered.com/search/"
                   "?sort_by=Released_DESC&category1=998"]
     allowed_domains = ['steampowered.com']
+    selectors = {'release_date': 'div.date ::text',
+                 'title': '.apphub_AppName ::text',
+                 'description': '#game_area_description',
+                 'num_reviews': '.user_reviews .responsive_hidden ::text',
+                 'specs': '.game_area_details_specs a ::text',
+                 'tags': 'a.app_tag ::text',
+                 'price': 'div.price::attr(data-price-final)',
+                 'system_requirements':
+                     '.game_area_sys_req[data-os="win"] ::text'
+                 }
 
     rules = (
         Rule(
@@ -53,11 +59,12 @@ class GameParser(CrawlSpider):
 
     @staticmethod
     def add_cookies(request):
-        """
-        Add cookie for correct language, avoiding age checking,
-            mature content checking
-        """
-        request.cookies.update({'Steam_language': LANGUAGE,
+        """Add cookies.
+
+         We can do it to set correct language, avoiding age checking,
+         mature content checking
+         """
+        request.cookies.update({'Steam_language': settings.LANGUAGE,
                                 'mature_content': '1',
                                 'lastagecheckage': '1-0-2000',
                                 'birthtime': 943999201})
@@ -65,8 +72,8 @@ class GameParser(CrawlSpider):
         return request
 
     def parse_page(self, response):
-        """
-        Method for parsing page with games
+        """Method for parsing page with games.
+
         We should stop parsing if we face too old game (depends on settings)
         """
         # look at games release dates on the page
@@ -75,18 +82,14 @@ class GameParser(CrawlSpider):
         release_dates_str = response.css('div.search_released::text').extract()
         for release_date_str in release_dates_str:
             release_date = StrToDate()(release_date_str)
-
-            if (isinstance(release_date, datetime) and
-                    (datetime.now() - release_date).days <= DAYS_EARLIER):
-                return self.parse(response)
-
+            if isinstance(release_date, datetime):
+                days_difference = (datetime.now() - release_date).days
+                if days_difference <= settings.DAYS_EARLIER:
+                    return self.parse(response)
         pass
 
-    @staticmethod
-    def parse_game(response):
-        """
-        Method for parsing game
-        """
+    def parse_game(self, response):
+        """Method for parsing game."""
         # if there is age checking form, than our cookies broke
         if '/agecheck/app' in response.url:
             # TODO: add logging
@@ -96,25 +99,15 @@ class GameParser(CrawlSpider):
         else:
             loader = GameItemLoader(item=Game(), response=response)
 
-            loader.add_css('div.date ::text')
-
-            game_id = int(re.match(r'.+/(\d+)/.+', response.url).groups()[0])
+            game_id = self._find_id_by_url(response.url)
             loader.add_value('game_id', game_id)
 
-            loader.add_css('title', '.apphub_AppName ::text')
-
-            loader.add_css('description', '#game_area_description')
-
-            loader.add_css('num_reviews',
-                           '.user_reviews .responsive_hidden ::text')
-
-            loader.add_css('specs', '.game_area_details_specs a ::text')
-
-            loader.add_css('tags', 'a.app_tag ::text')
-
-            loader.add_css('price', 'div.price::attr(data-price-final)')
-
-            loader.add_css('system_requirements',
-                           '.game_area_sys_req[data-os="win"] ::text')
+            for field, selector in self.selectors:
+                loader.add_css(field, selector)
 
             yield loader.load_item()
+
+    @staticmethod
+    def _find_id_by_url(response):
+        """Finding id of game in game url."""
+        return int(re.search(r'.+/(\d+)/.+', response.url).group(0))

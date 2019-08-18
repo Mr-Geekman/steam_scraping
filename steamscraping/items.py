@@ -16,9 +16,7 @@ from steamscraping.settings import REVIEWS_TO_PASS, DAYS_EARLIER, LANGUAGE
 
 
 class LanguageSelectError(ValueError):
-    """
-    Language in settings.py is not supported
-    """
+    """Language in settings.py is not supported."""
     def __init__(self):
         message = ("Please select correct language in settings.py: "
                    "russian or english")
@@ -30,9 +28,10 @@ class StrToInt:
         self.default = default
 
     def __call__(self, int_str: str):
-        """
-        Get int from string if it is possible, otherwise default value
+        """Get int from string if it is possible, otherwise default value.
+
         :param int_str: value to convert
+
         :return: result of converting
         """
         try:
@@ -55,9 +54,10 @@ class StrToDate:
         pass
 
     def __call__(self, date_str):
-        """
-        Get datetime instance from string if it is possible
+        """Get datetime instance from string if it is possible.
+
         :param date_str: string with date
+
         :return: datetime instance if it is possible (otherwise given string)
         """
         for datetime_format in self.datetime_formats:
@@ -71,14 +71,13 @@ class StrToDate:
 
 
 class GameNumReviews:
-    """
-    Service methods for processing num of reviews
-    """
+    """Service methods for processing num of reviews."""
     @staticmethod
     def filter_by_num_review(num_reviews: int) -> Union[int, None]:
-        """
-        Filter games, that have enough reviews
+        """Filter games, that have enough reviews.
+
         :param num_reviews: num of reviews
+
         :return: num of reviews if it is enough, otherwise None
         """
         if num_reviews >= REVIEWS_TO_PASS:
@@ -88,15 +87,13 @@ class GameNumReviews:
 
 
 class GameReleaseDate:
-    """
-    Service methods for processing game release date
-    """
+    """Service methods for processing game release date."""
     @staticmethod
     def filter_by_date(release_date):
-        """
-        Filter games, that have relevant release date (not older than
-            in specified in settings)
+        """Filter games with relevant release date.
+
         :param release_date: release date
+
         :return: release date if it was filtered, otherwise None
         """
         if (isinstance(release_date, datetime) and
@@ -107,23 +104,17 @@ class GameReleaseDate:
 
 
 class GameDescription:
-    """
-    Service methods for processing game descriptions
-    """
+    """Service methods for processing game descriptions."""
     @staticmethod
     def remove_divs(value):
-        """
-        Remove div tags around the description
-        """
+        """Remove div tags around the description."""
         left_border = value.find('>')
         right_border = value.rfind('<')
         return value[left_border + 1, right_border]
 
 
 class GameRequirements:
-    """
-    Class for storing system requirements
-    """
+    """Class for storing system requirements."""
     def __init__(self, min_os, min_cpu, min_ram, min_gpu, rec_os, rec_cpu,
                  rec_ram, rec_gpu):
         self.min_os = min_os
@@ -139,8 +130,8 @@ class GameRequirements:
 
 
 class GameRequirementsBuilder:
-    """
-    Class for building object for storing system requirements
+    """Class for building object for storing system requirements.
+
     We can pass additional parameters for building
     """
     def __init__(self):
@@ -158,9 +149,10 @@ class GameRequirementsBuilder:
             raise LanguageSelectError()
 
     def __call__(self, data_from_scraper: List[str]) -> GameRequirements:
-        """
-        Building GameRequirements object
+        """Building GameRequirements object.
+
         :param data_from_scraper: data collected by scraper
+
         :return: GameRequirements instance
         """
         # remove white spaces from collected data
@@ -193,19 +185,17 @@ class GameRequirementsBuilder:
 
     @staticmethod
     def _remove_white_spaces(data_from_scraper: List[str]) -> None:
-        """
-        Remove redundant white spaces and elements, that consists only of
-            them (\r, \n, \t)
-        """
+        """Remove redundant white spaces (\r, \n, \t)."""
         data_from_scraper = list(map(lambda x: x.strip(), data_from_scraper))
         data_from_scraper.remove('')
 
     def _split_requirements(
             self, data_from_scraper: List[str]
     ) -> Tuple[List[str], List[str]]:
-        """
-        Find sublists contains minimum and recommended system requirements
+        """Find sublists contains minimum and recommended system requirements.
+
         :param data_from_scraper: scraped data
+
         :return: two sublists
         """
         min_index_start = 0
@@ -227,11 +217,12 @@ class GameRequirementsBuilder:
     def _get_requirement(
             requirements_list: List[str], label: str
     ) -> Union[str, None]:
-        """
-        Get from system requirements list the element by label
+        """Get from system requirements list the element by label.
+
         :param requirements_list: list with requirements
         :param label: обозначение для требования, которое нужно достать
         :param label: label for requirement to get
+
         :return: found string or None
         """
         if not requirements_list:
@@ -245,9 +236,7 @@ class GameRequirementsBuilder:
 
 
 class Game(scrapy.Item):
-    """
-    Model for game
-    """
+    """Model for game."""
     game_id = scrapy.Field()
     title = scrapy.Field()
     description = scrapy.Field(
@@ -259,8 +248,7 @@ class Game(scrapy.Item):
     num_reviews = scrapy.Field(
         input_processor=Compose(
             MapCompose(
-                lambda x: re.match(r'\((.*?)\)', x).group(0),
-                TakeFirst(),
+                lambda x: re.search(r'\((.*?)\)', x).group(0),
                 StrToInt(0)
             ),
             max
@@ -275,11 +263,12 @@ class Game(scrapy.Item):
         output_processor=GameReleaseDate.filter_by_date
     )
     specs = scrapy.Field(
-        input_processor=Identity()
+        input_processor=MapCompose(
+            lambda x: x.strip()
+        )
     )
     tags = scrapy.Field(
-        input_processor=Compose(
-            Identity,
+        input_processor=MapCompose(
             lambda x: x.strip()
         )
     )

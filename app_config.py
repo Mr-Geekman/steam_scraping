@@ -1,6 +1,4 @@
-"""
-Config parser for secure settings (database)
-"""
+"""Config parser for secure settings (database)."""
 
 import os
 import yaml
@@ -9,9 +7,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class AppConfig:
-    """
-    Class for parsing app settings from config file (secure settings)
-    """
+    """Class for parsing app settings from config file (secure settings)."""
     def __init__(self):
         db_config_filename = os.path.join(APP_DIR, 'app.yaml')
         if os.path.isfile(db_config_filename):

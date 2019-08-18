@@ -107,7 +107,7 @@ DUPEFILTER_CLASS = 'steamscraping.middlewares.SteamDupeFilter'
 
 # supported languages: english, russian (otherwise, you will get an error)
 LANGUAGE = 'english'
-DAYS_EARLIER = 2
+DAYS_EARLIER = 20
 REVIEWS_TO_PASS = 500
 
 # DB settings
