@@ -18,7 +18,7 @@ idna==2.8
 incremental==17.5.0
 Jinja2==2.10.1
 jinja2-time==0.2.0
-lxml==4.3.4
+lxml==4.9.1
 MarkupSafe==1.1.1
 pager==3.3
 parsel==1.5.1
